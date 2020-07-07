@@ -1,0 +1,159 @@
+name: CI
+on: [push]
+jobs:
+  build:
+    name: Hello RedWoodJS blog
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [12.x]
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Upgrade Yarn
+        run: npm install yarn -g
+      - name: Clean all directories
+        run: ls | grep -v ".github" | while read filename; do rm -rf "$filename"; done
+
+      - name: Create app
+        run: yarn create redwood-app ./redwoodblog
+
+      - name: Copy the .github directory
+        run: cp .github ./redwoodblog -R
+
+      - name: Add Home, About and Layout page
+        working-directory: ./redwoodblog
+        run: |
+          yarn rw g page home /
+          yarn rw g page about
+          yarn rw g page contact
+          yarn rw g page BlogPost
+          yarn rw g cell BlogPost
+          yarn rw g cell BlogPosts
+          yarn rw g component BlogPost
+          yarn rw g layout blog
+
+      - name: Edit the HomePage.js file
+        working-directory: ./redwoodblog
+        env:
+          HOME_PAGE: ${{ secrets.HOME_PAGE }}
+        run: |
+          echo $HOME_PAGE | base64 --decode > ./web/src/pages/HomePage/HomePage.js
+
+      - name: Edit the AboutPage.js file
+        working-directory: ./redwoodblog
+        env:
+          ABOUT_PAGE: ${{ secrets.ABOUT_PAGE }}
+        run: |
+          echo $ABOUT_PAGE | base64 --decode > ./web/src/pages/AboutPage/AboutPage.js
+
+      - name: Edit the BlogLayout.js file
+        working-directory: ./redwoodblog
+        env:
+          BLOG_LAYOUT: ${{ secrets.BLOG_LAYOUT }}
+        run: |
+          echo $BLOG_LAYOUT | base64 --decode > ./web/src/layouts/BlogLayout/BlogLayout.js
+
+      - name: Edit the schema.prisma file
+        working-directory: ./redwoodblog
+        env:
+          SCHEMA_PRISMA: ${{ secrets.SCHEMA_PRISMA }}
+        run: |
+          echo $SCHEMA_PRISMA | base64 --decode > ./api/prisma/schema.prisma
+      - name: Update database      
+        env:
+          BINARY_TARGET: ${{ secrets.BINARY_TARGET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        working-directory: ./redwoodblog/api
+        run: |
+          yarn rw db save post_contact
+          yarn rw db up
+          yarn rw g scaffold post
+          yarn rw g sdl contact
+
+      - name: Edit the BlogPostsCell.js file
+        working-directory: ./redwoodblog
+        env:
+          BLOG_POSTS_CELL: ${{ secrets.BLOG_POSTS_CELL }}
+        run: |
+          echo $BLOG_POSTS_CELL | base64 --decode > ./web/src/components/BlogPostsCell/BlogPostsCell.js
+
+      - name: Edit the BlogPostCell.js file
+        working-directory: ./redwoodblog
+        env:
+          BLOG_POST_CELL: ${{ secrets.BLOG_POST_CELL }}
+        run: |
+          echo $BLOG_POST_CELL | base64 --decode > ./web/src/components/BlogPostCell/BlogPostCell.js
+
+      - name: Edit the BlogPostCell.js file
+        working-directory: ./redwoodblog
+        env:
+          BLOG_POST_PAGE: ${{ secrets.BLOG_POST_PAGE }}
+        run: |
+          echo $BLOG_POST_PAGE | base64 --decode > ./web/src/pages/BlogPostPage/BlogPostPage.js
+
+      - name: Edit the BlogPost.js file
+        working-directory: ./redwoodblog
+        env:
+          BLOG_POST: ${{ secrets.BLOG_POST }}
+        run: |
+          echo $BLOG_POST | base64 --decode > ./web/src/components/BlogPost/BlogPost.js
+
+      - name: Edit the index.css file
+        working-directory: ./redwoodblog
+        env:
+          INDEX_CSS: ${{ secrets.INDEX_CSS }}
+        run: |
+          echo $INDEX_CSS | base64 --decode > ./web/src/index.css
+
+      - name: Edit the Routes.js file
+        working-directory: ./redwoodblog
+        env:
+          ROUTES: ${{ secrets.ROUTES }}
+        run: |
+          echo $ROUTES | base64 --decode > ./web/src/Routes.js
+
+      - name: Edit the contacts.js file
+        working-directory: ./redwoodblog
+        env:
+          CONTACTS: ${{ secrets.CONTACTS }}
+        run: |
+          echo $CONTACTS | base64 --decode > ./api/src/services/contacts/contacts.js
+
+      - name: Edit the ContactPage.js file
+        working-directory: ./redwoodblog
+        env:
+          CONTACT_PAGE: ${{ secrets.CONTACT_PAGE }}
+        run: |
+          echo $CONTACT_PAGE | base64 --decode > ./web/src/pages/ContactPage/ContactPage.js
+      
+      - name: Git-init
+        working-directory: ./redwoodblog
+        run: git init
+
+      - name: Git-add
+        working-directory: ./redwoodblog
+        run: git add .
+
+      - name: Git-config
+        working-directory: ./redwoodblog
+        run: |
+          git config --global user.email "doanfang80@gmail.com"
+          git config --global user.name "Doan Fang"
+
+      - name: Git-commit
+        working-directory: ./redwoodblog
+        run: git commit -m 'First commit'
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          directory: ./redwoodblog
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
